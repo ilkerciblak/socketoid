@@ -1,0 +1,6 @@
+.env
+*/.env
+todo.md
+*/todo.md
+./frontend/node_modules/
+./backend/bin
