@@ -1,6 +1,6 @@
 FROM golang:latest
 
-WORKDIR /app
+WORKDIR /workspace
 
 # Go araçlarını yükle
 RUN go install \
