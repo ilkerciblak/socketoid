@@ -2,5 +2,5 @@
 */.env
 todo.md
 */todo.md
-./frontend/node_modules/
-./backend/bin
+/frontend/node_modules/
+/backend/bin/
