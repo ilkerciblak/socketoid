@@ -3,5 +3,5 @@ type AppConfig = {
 };
 
 export const app_config: AppConfig = {
-  BASE_URL: process.env.SERVER_URL!
+  BASE_URL: process.env.NEXT_PUBLIC_SERVER_URL!
 } as AppConfig;
