@@ -114,3 +114,59 @@ SSE technology plays a key role behind the scenes when interacting with Generati
 
 During this process, ChatGPT’s server utilizes SSE to push each part of the article to the client in real-time, allowing the user to see the content appear as it is being generated.
 
+
+## Project Overview
+
+### Project Scope
+
+Project will be covering WebSocket and SSE communication protocols from scratch. Lastly, on _phase 6_ third party integrations will be covered.
+
+### Project Description
+
+_Real-Time Collaboriton Board_ will be an application that users will be able to CRUD notes, and get notification in real-time.
+
+### Tech-Stack
+
+**Backend:** Go ^1.25.0 
+**Frontend:**: Nextjs with AppRouter, Typescript and TailwindCSS 
+**API Design:** WebSockets for bi-directional CRUD operations, SSE for notifications
+**State Management:** In memory or redis
+**Development Environment and Ops**: Git, Docker, Neovim
+
+### Project Roadmap
+
+In order to conduct clear educational steps to `learn by building` on _Real Time Communication Protocols_ following roadmap or phase plan will be used:
+
+- [x] Phase 1 - Foundations
+    - [x] 1.1 -> HTTP Server Skeleton with Golang
+    - [x] 1.2 -> Frontend Project Skeleton with basic layout using NextJS framework with AppRouter, TypeScript and TailwindCSS
+
+- [ ] Phase 2 - Implementing Server Sent Events
+    - [ ] 2.1 -> SSE endpoint (Go)
+    - [ ] 2.2 -> SSE Client Instrumentation (Next.js)
+    - [ ] 2.3 -> Presence System Implementation
+
+- [ ] Phase 3 - WebSocket Implementation 
+    - [ ] 3.1 -> WebSocket upgrade and connection manager on server side
+    - [ ] 3.2 -> WebSocket client hook on frontend
+    - [ ] 3.3 -> Board event protocol (message types, serializing/ deserializing messages)
+
+- [ ] Phase 4 - Feature Implementation
+    - [ ] 4.1 -> CRUD over WebSocket
+    - [ ] 4.2 -> Optimistic UI & reconciliation
+
+- [ ] Phase 5 - Production Hardening
+    - [ ] 5.1 -> RReconnection and exponential backoff 
+    - [ ] 5.2 -> Heartbeat / ping-pong mechanism
+    - [ ] 5.3 -> Graceful shutdown on backend
+
+- [ ] Phase 6 - Third party implementation strategies
+    - [ ] 6.1 -> Refactoring the server api with `gorilla/websocket`
+    - [ ] 6.2 -> EventSource polyfill and reconnecting-eventsource
+
+## Versioning & Changelog
+
+In order to implement _changes_, e.g. refactors or new features, in several steps this repository will use `Phase x.x.x` declaration. 
+
+Thus to follow steps and further changes, please check [issues](https://github.com/ilkerciblak/socketoid/issues) and [CHANGELOG.md](./CHANGELOG.md) 
+
