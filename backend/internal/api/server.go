@@ -13,11 +13,11 @@ type server struct {
 	server *http.Server
 }
 
-func Server(address string, read_to, write_to, idle_to int) (*server, error) {
+func Server(address string, idle_to int) (*server, error) {
 	mux := http.NewServeMux()
 	sse_hub := sse.Hub()
 	go func() {
-		sse_hub.Run(context.TODO())
+		sse_hub.Run(context.Background())
 	}()
 	mux.HandleFunc("/", greet)
 	mux.HandleFunc("/health", healthCheck)
@@ -25,7 +25,7 @@ func Server(address string, read_to, write_to, idle_to int) (*server, error) {
 
 	return &server{
 		server: &http.Server{
-			Addr: address,
+			Addr:        address,
 			IdleTimeout: time.Second * time.Duration(idle_to),
 			Handler:     mux,
 		},

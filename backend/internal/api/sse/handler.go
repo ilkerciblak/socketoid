@@ -40,7 +40,7 @@ func SseHandler(h *hub) http.HandlerFunc {
 			case msg := <-client.Channel:
 				_, err := fmt.Fprintf(
 					w,
-					"event:channel-msg\n\ndata:%s\n\n",
+					"event:channel-msg\ndata:%s\n\n",
 					msg,
 				)
 				if err != nil {

@@ -33,7 +33,7 @@ type Client struct {
 
 func NewClient() Client {
 	id := uuid.New().String()
-	channel := make(chan string)
+	channel := make(chan string, 1)
 
 	return Client{
 		ID:      id,
@@ -41,7 +41,7 @@ func NewClient() Client {
 	}
 }
 
-func (h *hub) registerClient(ctx context.Context, client Client) error {
+func (h *hub) registerClient(client Client) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if _, exists := h.connections[client.ID]; exists {
@@ -52,19 +52,20 @@ func (h *hub) registerClient(ctx context.Context, client Client) error {
 	return nil
 }
 
-func (h *hub) disconnectClient(ctx context.Context, client_id string) error {
+func (h *hub) disconnectClient(client_id string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if _, exists := h.connections[client_id]; !exists {
 		return fmt.Errorf("client connection does not exists")
 	}
-
+	clientCh := h.connections[client_id]
+	close(clientCh)
 	delete(h.connections, client_id)
 
 	return nil
 }
 
-func (h *hub) broadcastMessage(ctx context.Context, message string) error {
+func (h *hub) broadcastMessage(message string) error {
 	h.mu.Lock()
 	channels := make([]chan string, 0, len(h.connections))
 
@@ -74,7 +75,7 @@ func (h *hub) broadcastMessage(ctx context.Context, message string) error {
 
 	h.mu.Unlock()
 
-	for _, channel := range h.connections {
+	for _, channel := range channels {
 		channel <- message
 	}
 
@@ -86,14 +87,16 @@ func (h *hub) Run(ctx context.Context) {
 
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case new_client := <-h.register:
-			if err := h.registerClient(ctx, *new_client); err != nil {
+			if err := h.registerClient(*new_client); err != nil {
 				fmt.Println(err)
 			}
 		case client := <-h.disconnect:
-			h.disconnectClient(ctx, client.ID)
+			h.disconnectClient(client.ID)
 		case msg := <-h.broadcast:
-			h.broadcastMessage(ctx, msg)
+			h.broadcastMessage(msg)
 		}
 	}
 }

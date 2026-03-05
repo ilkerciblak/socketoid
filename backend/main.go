@@ -22,8 +22,6 @@ func main() {
 
 	server, _ := api.Server(
 		app_config.ADDR,
-		app_config.ReadTimeout,
-		app_config.WriteTimeout,
 		app_config.IdleTimeout,
 	)
 
