@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"ilkerciblak/socketoid/internal/api/sse"
 	"net/http"
 	"time"
 )
@@ -12,19 +13,21 @@ type server struct {
 	server *http.Server
 }
 
-func Server(address string, read_to, write_to, idle_to int) (*server, error) {
+func Server(address string, idle_to int) (*server, error) {
 	mux := http.NewServeMux()
-
+	sse_hub := sse.Hub()
+	go func() {
+		sse_hub.Run(context.Background())
+	}()
 	mux.HandleFunc("/", greet)
 	mux.HandleFunc("/health", healthCheck)
+	mux.HandleFunc("/events", sse.SseHandler(sse_hub))
 
 	return &server{
 		server: &http.Server{
-			Addr:         address,
-			ReadTimeout:  time.Second * time.Duration(read_to),
-			WriteTimeout: time.Second * time.Duration(write_to),
-			IdleTimeout:  time.Second * time.Duration(idle_to),
-			Handler:      mux,
+			Addr:        address,
+			IdleTimeout: time.Second * time.Duration(idle_to),
+			Handler:     mux,
 		},
 	}, nil
 }
