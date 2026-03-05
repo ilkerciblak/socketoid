@@ -9,6 +9,9 @@ SSE is a web technology that provides uni-directional real time communication ov
     - Single, persistent HTTP communication
     - Supports uni-directional real-time data flow, from server to client
 
+- Downsides
+    - Only supports the MIME type `text/event-stream`
+
 > [!Warning]
 > When not used over HTTP/2, SSE suffers from a limitation to the maximum number of open connections, which can be especially painful when opening multiple tabs, as the limit is per browser and is set to a very low number (6). The issue has been marked as "Won't fix" in Chrome and Firefox. This limit is per browser + domain, which means that you can open 6 SSE connections across all of the tabs to www.example1.com and another 6 SSE connections to www.example2.com (per Stack Overflow). When using HTTP/2, the maximum number of simultaneous HTTP streams is negotiated between the server and the client (defaults to 100).
 
