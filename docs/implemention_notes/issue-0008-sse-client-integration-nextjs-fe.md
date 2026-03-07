@@ -11,20 +11,20 @@ The `EventSource` interface is web content's interface to _server sent events_. 
 
 Once the connection is opened, incoming messages from the server are delivered to client n the form of _events_. If there is an `event field` in the incoming message, the triggered event is the same as the event field value. If no event field is present, then a generic `message event` is fired.
 
-Named events mentioned, can be listened using basic `addEventListener('event-name' ()=>{})` usage. [See **Examples** section](####Examples)
+Named events mentioned, can be listened using basic `addEventListener('event-name' ()=>{})` usage. [See **Examples** section](#### Examples)
 
 #### Instance Properties
 
 > [!NOTE]
 > This interface also inherits properties from its parent `EventTarget`, see [EventTarget on MDN Documentation](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget)
 
--  `EventSource.readyState` | _readonly_
+-  `EventSource.readyState` | _readonly_ <br/>
     A number representing the state of the connection. Possible values are `0`, `1` and `2` for `CONNECTING`, `OPEN` and `CLOSED` respectively.
 
-- `EventSource.url` | _readonly_
+- `EventSource.url` | _readonly_ <br/>
     A string representng the `URL` of the source.
 
-- `EventSource.withCredentials` | _readonly_
+- `EventSource.withCredentials` | _readonly_ <br/>
     A `boolean` value indicating whether the `EventSource` object was instantated with `CORS` credentials set.  
 
 #### Instance Methods
@@ -35,11 +35,12 @@ Named events mentioned, can be listened using basic `addEventListener('event-nam
 - `EventSource.close()`: 
     Closes the connection, and sets the `readyState` attribute to `CLOSED` if any.
 
-- `EventSource.addEventListener('event-name', f)` | _inherited from `EventTarget`
+> [!IMPORTANT]
+> If there is an `event` field in a message, client js should use `addEventListener('event-name')` instead of `onmessage`. 
+
+- `EventSource.addEventListener('event-name', f)` | _inherited from `EventTarget`_<br/>
     The addEventListener() method of the EventTarget interface sets up a function that will be called whenever the specified event is delivered to the target. See [official documentation on MDN](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener) if needed.
 
-> [!TIP]
-> If there is an `event` field in a message, client js should use `addEventListener('event-name')` instead of `onmessage`. 
 
 
 #### Events
