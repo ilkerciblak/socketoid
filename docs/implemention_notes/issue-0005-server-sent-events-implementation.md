@@ -62,7 +62,7 @@ sequenceDiagram
 
 ## Implementation Problems, Decisions and Details
 
-## The Scale Problem
+### The Scale Problem
 
 By default behavior of _go-lang concurrency rules_, every _goroutine_ is running isolated. Thus there is no shared memory. On the other hand, each time a client connects to the sse endpoint, a new isolated go routine is running for this client. #X number of clients means #X of isolated go-routines running background.
 
@@ -142,8 +142,127 @@ sequenceDiagram
 
 ```
 
+### Implementation Details
+
+#### `hub.broadcastMessage` method details
+```go
+func (h *hub) broadcastMessage(message string) error {
+	h.mu.Lock()
+	channels := make([]chan string, 0, len(h.connections))
+
+	for _, channel := range h.connections {
+		channels = append(channels, channel)
+	}
+
+	h.mu.Unlock()
+
+	for _, channel := range channels {
+		channel <- message
+	}
+
+	return nil
+}
+```
+
+In order to prevent `deadlocks`, broadcastMessage method once copies the connected client channels before iterating over them. Its only lock while copying the channels then unlocks the mutex.
+
+#### SSE Handler implementation
+```go
+func SseHandler(h *hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		headers(w)
+		flusher, k := w.(http.Flusher)
+		if !k {
+			http.Error(w, "sse not supported", http.StatusInternalServerError)
+			return
+		}
+
+		client := NewClient()
+		h.register <- &client
+
+		t := time.NewTicker(time.Duration(1) * time.Second)
+		defer t.Stop()
+
+		for {
+			select {
+			case <-r.Context().Done():
+				h.disconnect <- &client
+				return
+			case <-t.C:
+				_, err := fmt.Fprintf(
+					w,
+					": keepalive\n\n",
+				)
+				if err != nil {
+					http.Error(w, "msg failed", http.StatusInternalServerError)
+					return
+				}
+				flusher.Flush()
+
+			case msg := <-client.Channel:
+				_, err := fmt.Fprintf(
+					w,
+					"event:channel-msg\ndata:%s\n\n",
+					msg,
+				)
+				if err != nil {
+					http.Error(w, "msg failed", http.StatusInternalServerError)
+					return
+				}
+				flusher.Flush()
+			}
+		}
+
+	}
+}
+
+func headers(w http.ResponseWriter) {
+	w.Header().Set("content-type", "text/event-stream")
+	w.Header().Set("cache-control", "no-cache")
+	w.Header().Set("connection", "keep-alive")
+}
+```
+- `flusher.Flush()` immediately returns the message to client, without it client cannot receive message
+
+- When a user-agent calls the endpoint, handler creates a new client
+    ```go
+        client := NewClient()
+        // writing hub's register channel
+        hub.register <- &client
+    ```
+    this will trigger hub instance's `Run()` go routine as mentioned.
+
+- Then handler creates a `ticker` to periodically send `: keep-alive\n\n` message to client via
+    ```go
+	    case <-t.C:
+			_, err := fmt.Fprintf(
+				w,
+				": keepalive\n\n",
+			)
+			if err != nil {
+				http.Error(w, "msg failed", http.StatusInternalServerError)
+                return
+			}
+			flusher.Flush()
+    ```
+- Lastly, filtered message is writed into `ResponseWriter` which comes from client's channel itself
+    ```go
+			case msg := <-client.Channel:
+				_, err := fmt.Fprintf(
+					w,
+					"event:channel-msg\ndata:%s\n\n",
+					msg,
+				)
+				if err != nil {
+					http.Error(w, "msg failed", http.StatusInternalServerError)
+					return
+				}
+				flusher.Flush()
+    ```
 
 
+### Related Implementation Decisions
+- See [Disabling Timeout Variables for SSE](../adr/ADR-0001-Disabling-Timeout-Variables.md)
 
 
 
