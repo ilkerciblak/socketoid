@@ -66,7 +66,7 @@ sequenceDiagram
 
 By default behavior of _go-lang concurrency rules_, every _goroutine_ is running isolated. Thus there is no shared memory. On the other hand, each time a client connects to the sse endpoint, a new isolated go routine is running for this client. #X number of clients means #X of isolated go-routines running background.
 
-This behavior complicates centerilized management of these multiple client connections. Also any event may require to broadcast its data to multiple user at once. Consequently, application requires a centerilized connection manager that is aware of registering, disconnection clients and can broadcast message to all or filtered client message channels.
+This behavior complicates centralized management of these multiple client connections. Also any event may require to broadcast its data to multiple user at once. Consequently, application requires a centralized connection manager that is aware of registering, disconnection clients and can broadcast message to all or filtered client message channels.
 
 ### Hub Pattern
 
