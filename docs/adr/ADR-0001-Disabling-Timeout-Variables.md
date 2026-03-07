@@ -16,7 +16,6 @@ The HTTP server was originally configured with standard timeout settings includi
 The HTTP server configuration will disable the `WriteTimeout` and `ReadTimeout` for endpoints that deliver Server-Sent Events (SSE). Since SSE relies on long-lived streaming responses, enforcing a write timeout can prematurely terminate valid connections. Other timeout settings such as `IdleTimeout` will remain enabled to maintain general server protections.
 
 
-
 ## Consequences
 
 **Positive:**:
