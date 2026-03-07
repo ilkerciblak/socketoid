@@ -1,6 +1,8 @@
+"use server";
+import SSEStatusIndicator from "../components/sse_status_component";
 import { server } from "../lib/fetcher";
 
-export default function Health() {
+export default async function Health() {
   type Health = {
     status: number;
     time: string;
@@ -9,12 +11,10 @@ export default function Health() {
     const healthData = (await server.GET<Health>("health")) as Health;
 
     return (
-      <div className="bg-blue-500 rounded-2xl flex flex-row justify-between px-1 py-2">
-        <div className="bg-white rounded-full w-5 text-blue-500 italic">
-          i
-        </div>
-        <p className="text-amber-400 italic"> Status: {healthData.status}</p>
-        <p className="ml-2 text-sm text-amber-300"> at {healthData.time}</p>
+      <div className="w-100 bg-blue-500 rounded-2xl flex flex-row justify-between items-center px-3 m-auto py-2">
+        <div className="bg-white rounded-xl align-bottom py-3 px-1 text-center text-blue-500 font-bold text-xs italic">Server Health</div>
+        <p className="text-white font-bold italic"> Status: {healthData.status}</p>
+        <p className="ml-2 text-sm text-amber-100"> at {healthData.time}</p>
       </div>
     );
   };
@@ -22,6 +22,7 @@ export default function Health() {
   return (
     <main>
       <HealthStatus />
+      <SSEStatusIndicator/>
     </main>
   );
 }
