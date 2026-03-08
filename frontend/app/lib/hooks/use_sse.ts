@@ -7,9 +7,13 @@ export const enum ConnectionStatus {
   ERROR = "error",
 }
 
+type onMessage = { type: string; handler: (event: MessageEvent) => void };
+
 export default function useSSE(
   url: string,
-  options?: { onMessage?: (event: MessageEvent) => void },
+  options?: {
+    handlers: onMessage[];
+  },
 ) {
   const [connectionState, setConnectionState] = useState<ConnectionStatus>(
     ConnectionStatus.CONNECTING,
@@ -18,6 +22,7 @@ export default function useSSE(
 
   const [eventQueue, setEventQueue] = useState<string[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const optionsRef = useRef(options);
 
   // const maxReconnectAttemps = 5;
 
@@ -29,38 +34,41 @@ export default function useSSE(
 
       eventSource.onopen = () => {
         setConnectionState(ConnectionStatus.OPEN);
-        console.log("open oldu")
         setErrorMsg(null);
       };
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (options?.onMessage) {
-            options.onMessage?.(data);
+      if (optionsRef?.current?.handlers.length) {
+        optionsRef?.current?.handlers.forEach((handler) => {
+          eventSource.addEventListener(handler.type, (e) => {
+            try {
+              handler.handler(e);
+            } catch (error) {
+              setErrorMsg(`failed to process message: ${error}`);
+            }
+          });
+        });
+      } else {
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            setEventQueue((prev) => [...prev, data]);
+          } catch (error) {
+            setErrorMsg(`${error}`);
           }
-          setEventQueue((prev) => [...prev, data]);
-          console.log("event", data)
-          console.log("que", eventQueue)
-        } catch (error) {
-          console.log("failed to parse event message:\n", error);
-          setErrorMsg(`${error}`);
-        }
-      };
+        };
+      }
 
       eventSource.onerror = (error) => {
         error.preventDefault();
         setConnectionState(ConnectionStatus.ERROR);
         setErrorMsg(`Failed to establish connection:\n ${error}`);
-        eventSource.close();
       };
     },
-    [url, options],
+    [url],
   );
 
   useEffect(() => {
     connect();
-    console.log("hello there");
     return () => {
       eventSourceRef.current?.close();
     };

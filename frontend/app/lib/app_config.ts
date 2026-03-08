@@ -1,5 +1,6 @@
 type AppConfig = {
   BASE_URL: string;
+  PUBLIC_API: string;
 };
 
 export const app_config: AppConfig = {

@@ -30,7 +30,8 @@ func SseHandler(h *hub) http.HandlerFunc {
 				return
 
 			case <-t.C:
-				event := fmt.Sprintf(`event:"user-joined"\ndata:{"user-id":%s}\n\n`, uuid.New().String())
+				dataStr :=  fmt.Sprintf(`data: {"user-id":"%s"}`, uuid.New().String())
+				event := "event: userjoined\n" + dataStr  + "\n\n"
 				_, err := fmt.Fprintf(
 					w,
 					event,

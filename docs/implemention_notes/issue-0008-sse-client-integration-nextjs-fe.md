@@ -67,7 +67,7 @@ evtSource.onmessage = (e) => {
 Each received event causes `onmessage` event handler to be run. It creates a new `<li>` element and writes the message's data into it.
 
 
-#### Named Events -> `addEventListener`
+#### NamedEvents -> `addEventListener`
 
 In order to listen named events, it is required to define a listener for each type of event sent:
 ```javascript
@@ -106,12 +106,92 @@ sse.addEventListener("message", (e) => {
 
 
 ```
-
+:
 ## Implementation Notes
-<!-- Important details about the implementation -->
 
-## Pitfalls
-<!-- Problems encountered and how they were resolved -->
+Despite there are ready-made solutions, server sent event's connection lifecycle, event processing and cleanup logic is encapsulated in a custom `useSSE` hook. Although, for now, there are no multiple Sse event usage in this project, encapsulating the logic introduces clean, re-usable and testable code structure.
+
+Our hook signature looks like following:
+```typescript
+type onMessage = { type: string; handler: (event: MessageEvent) => void };
+
+export default function useSSE(
+  url: string,
+  options?: {
+    handlers: onMessage[];
+  },
+)
+```
+
+Since default `EventSource.onmessage` method does not catch and processes _named events_, user interface can define the `type` of the event and `handler` as what to do with this event message data. For an example, our `SSEStatusIndicator` component tracks `userjoined` event and generates a list of `user-id`s coming from the event data.
+
+```typescript
+export default function SSEStatusIndicator() {
+  const [userList, setUserList] = useState<string[]>([]);
+  const { connectionState, error: errorMsg } = useSSE(
+    app_config.PUBLIC_API + "/events",
+    {
+      handlers: [
+        {
+          type: "userjoined",
+          handler(event) {
+            const data = JSON.parse(event.data);
+            setUserList((prev) => [data["user-id"], ...prev]);
+          },
+        },
+      ],
+    },
+  );
+```
+
+In addition `useSSE` hook also returns `connectionStatus` and `errorMsg` information to use in the indicator UI. Those are aiming miscellanous.
+
+Mainly to process sse connection lifecycle native `EventSource` interface API is used. Handling `EventSource.onopen` and `EventSource.onerror` events provided easy and clean implementations. On the other hand, `EventSource.onmessage` event is not sufficient for event data processing since its not catching _named events_. Thus hook signature allows user interface to inject some type of event data processing handlers.
+
+```typescript
+if (optionsRef?.current?.handlers.length) {
+        optionsRef?.current?.handlers.forEach((handler) => {
+          eventSource.addEventListener(handler.type, (e) => {
+            try {
+              handler.handler(e);
+            } catch (error) {
+              setErrorMsg(`failed to process message: ${error}`);
+            }
+          });
+        });
+      } else {
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            setEventQueue((prev) => [...prev, data]);
+          } catch (error) {
+            setErrorMsg(`${error}`);
+          }
+        };
+      }
+```
+
+Lastly since all `React Hooks` are functions, using `useEffect` hook with `connect` and a _clean up function_, is lets automatically binding the connection with the component that this hook is used. `EventSource.close()` instance method is used as clean up function to prevent leaks when the rendering is over.
+
+```typescript
+useEffect(() => {
+    connect();
+    return () => {
+        eventSourceRef.current?.close()
+    }
+}, [connect, url])
+```
+## Implementation Decisions 
+***Rendering Optimizations with `useCallback` and `useRef`***
+Using `connect` method as a direct dependency for `useEffect` was resulting infinite re-rendering. 
+
+```
+page renders -> hook's useEffect triggered -> connect() called -> new EventSource -> new State -> re-render -> loop starts over
+```
+
+Thus `connect` function defined using `useCallback` hook with `url` dependency.
+
+Also `options` parameter was causing same context. Thus in order to solve this issue `useRef` hook was used. 
 
 ## Related ADRs
 
