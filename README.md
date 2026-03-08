@@ -141,9 +141,9 @@ In order to conduct clear educational steps to `learn by building` on _Real Time
     - [x] 1.1 -> HTTP Server Skeleton with Golang
     - [x] 1.2 -> Frontend Project Skeleton with basic layout using NextJS framework with AppRouter, TypeScript and TailwindCSS
 
-- [ ] Phase 2 - Implementing Server Sent Events
-    - [ ] 2.1 -> SSE endpoint (Go)
-    - [ ] 2.2 -> SSE Client Instrumentation (Next.js)
+- [x] Phase 2 - Implementing Server Sent Events
+    - [x] 2.1 -> SSE endpoint (Go)
+    - [x] 2.2 -> SSE Client Instrumentation (Next.js)
     - [ ] 2.3 -> Presence System Implementation
 
 - [ ] Phase 3 - WebSocket Implementation 
