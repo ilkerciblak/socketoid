@@ -8,9 +8,8 @@ class Fetcher {
   }
 
   async GET<T>(path: string): Promise<T | string> {
-    console.log(`path is ${this.baseUrl + "/" + path}`);
     try {
-      const resp = await fetch(this.baseUrl + "/" + path, { method: "GET" });
+      const resp = await fetch(app_config.BASE_URL + "/" + path, { method: "GET" });
       const data = (await resp.json()) as T;
 
       return data;

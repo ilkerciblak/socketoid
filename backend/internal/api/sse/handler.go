@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func SseHandler(h *hub) http.HandlerFunc {
@@ -26,10 +28,13 @@ func SseHandler(h *hub) http.HandlerFunc {
 			case <-r.Context().Done():
 				h.disconnect <- &client
 				return
+
 			case <-t.C:
+				dataStr :=  fmt.Sprintf(`data: {"user-id":"%s"}`, uuid.New().String())
+				event := "event: userjoined\n" + dataStr  + "\n\n"
 				_, err := fmt.Fprintf(
 					w,
-					": keepalive\n\n",
+					event,
 				)
 				if err != nil {
 					http.Error(w, "msg failed", http.StatusInternalServerError)
@@ -58,4 +63,5 @@ func headers(w http.ResponseWriter) {
 	w.Header().Set("content-type", "text/event-stream")
 	w.Header().Set("cache-control", "no-cache")
 	w.Header().Set("connection", "keep-alive")
+	w.Header().Set("access-control-allow-origin", "*")
 }
