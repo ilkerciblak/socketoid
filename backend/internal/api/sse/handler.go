@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func SseHandler(h *hub) http.HandlerFunc {
@@ -19,6 +17,13 @@ func SseHandler(h *hub) http.HandlerFunc {
 
 		client := NewClient()
 		h.register <- &client
+		payload := PresencePayload{
+			Name:   r.URL.Query().Get("name"),
+			UserId: client.ID,
+		}
+		event := UserJoinedEvent(payload)
+
+		h.broadcast <- event.ToTextStream()
 
 		t := time.NewTicker(time.Duration(1) * time.Second)
 		defer t.Stop()
@@ -27,14 +32,15 @@ func SseHandler(h *hub) http.HandlerFunc {
 			select {
 			case <-r.Context().Done():
 				h.disconnect <- &client
+				event := UserLeftEvent(payload)
+				h.broadcast <- event.ToTextStream()
+
 				return
 
 			case <-t.C:
-				dataStr :=  fmt.Sprintf(`data: {"user-id":"%s"}`, uuid.New().String())
-				event := "event: userjoined\n" + dataStr  + "\n\n"
 				_, err := fmt.Fprintf(
 					w,
-					event,
+					"data: keepalive\n\n",
 				)
 				if err != nil {
 					http.Error(w, "msg failed", http.StatusInternalServerError)
@@ -45,7 +51,6 @@ func SseHandler(h *hub) http.HandlerFunc {
 			case msg := <-client.Channel:
 				_, err := fmt.Fprintf(
 					w,
-					"event:channel-msg\ndata:%s\n\n",
 					msg,
 				)
 				if err != nil {
