@@ -13,6 +13,7 @@ export default function useSSE(
   url: string,
   options?: {
     handlers: onMessage[];
+    auto: boolean;
   },
 ) {
   const [connectionState, setConnectionState] = useState<ConnectionStatus>(
@@ -27,9 +28,13 @@ export default function useSSE(
   // const maxReconnectAttemps = 5;
 
   const connect = useCallback(
-    function connect() {
+    (query?: { key: string; val: string }) => {
       if (eventSourceRef.current) eventSourceRef.current.close();
-      const eventSource = new EventSource(url, { withCredentials: false });
+      let base: URL = new URL(url);
+      if (query) {
+        base.searchParams.set(query.key, query.val);
+      }
+      const eventSource = new EventSource(base, { withCredentials: false });
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
@@ -68,7 +73,9 @@ export default function useSSE(
   );
 
   useEffect(() => {
-    connect();
+    if (optionsRef.current?.auto) {
+      connect();
+    }
     return () => {
       eventSourceRef.current?.close();
     };
