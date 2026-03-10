@@ -15,26 +15,16 @@ func SseHandler(h *hub) http.HandlerFunc {
 			return
 		}
 
-		client := NewClient()
+		client := NewClient(r.URL.Query().Get("name"))
 		h.register <- &client
-		payload := PresencePayload{
-			Name:   r.URL.Query().Get("name"),
-			UserId: client.ID,
-		}
-		event := UserJoinedEvent(payload)
 
-		h.broadcast <- event.ToTextStream()
-
-		t := time.NewTicker(time.Duration(1) * time.Second)
+		t := time.NewTicker(time.Duration(5) * time.Second)
 		defer t.Stop()
 
 		for {
 			select {
 			case <-r.Context().Done():
 				h.disconnect <- &client
-				event := UserLeftEvent(payload)
-				h.broadcast <- event.ToTextStream()
-
 				return
 
 			case <-t.C:

@@ -37,7 +37,8 @@ func UserLeftEvent(payload PresencePayload) SSEEvent {
 func (e SSEEvent) ToTextStream() string {
 	dataByte, err := json.Marshal(e.Payload)
 	if err != nil {
-		panic(err)
+		return fmt.Sprintf("event: error\ndata: %s", err.Error())
+
 	}
 	data := fmt.Sprintf("data: %s", dataByte)
 	event := fmt.Sprintf("event: %s", e.Type)
