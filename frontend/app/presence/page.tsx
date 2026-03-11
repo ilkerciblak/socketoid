@@ -43,20 +43,21 @@ export default function Presence() {
       },
     ],
   });
-  const submitName = (prevState: any, formData: FormData) => {
-    const firstName: string | null = formData.get("firstname") as string | null;
+
+  const submitName = (
+    prevState: { enteredValues: {} },
+    formData: FormData,
+  ): { enteredValues: { firstName: string } } => {
+    const firstName: string = formData.get("firstname") as string;
     connect({ key: "name", val: firstName ?? "" });
     return {
       enteredValues: { ...prevState, firstName },
     };
   };
 
-  //const [state, formAction] = useActionState(submitName, {
-  //    enteredValues: {},
-  // });
-  //
-
-  const [state, formAction] = useActionState(submitName, { enteredValues: {} });
+  const [state, formAction] = useActionState(submitName, {
+    enteredValues: { firstName: "" },
+  });
   return (
     <>
       <div className="flex flex-col justify-center items-center h-dvh">
