@@ -142,9 +142,9 @@ In order to conduct clear educational steps to `learn by building` on _Real Time
     - [x] 1.2 -> Frontend Project Skeleton with basic layout using NextJS framework with AppRouter, TypeScript and TailwindCSS
 
 - [x] Phase 2 - Implementing Server Sent Events
-    - [x] 2.1 -> SSE endpoint (Go): See [implementation notes](./docs/implementation-notes/issue-0005-server-sent-events-implementation.md)
-    - [x] 2.2 -> SSE Client Instrumentation (Next.js): See [implementation notes](./docs/implementation-notes/issue-0008-sse-client-integration-nextjs-fe.md) 
-    - [x] 2.3 -> Presence System Implementation: See [implementation notes](./docs/implementation-notes/issue-0010-presence-system-instrumentation.md)
+    - [x] 2.1 -> SSE endpoint (Go): See [implementation notes](./docs/implementation_notes/issue-0005-server-sent-events-implementation.md)
+    - [x] 2.2 -> SSE Client Instrumentation (Next.js): See [implementation notes](./docs/implementation_notes/issue-0008-sse-client-integration-nextjs-fe.md) 
+    - [x] 2.3 -> Presence System Implementation: See [implementation notes](./docs/implementation_notes/issue-0010-presence-system-instrumentation.md)
 
 - [ ] Phase 3 - WebSocket Implementation 
     - [ ] 3.1 -> WebSocket upgrade and connection manager on server side
