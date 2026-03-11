@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 func SseHandler(h *hub) http.HandlerFunc {
@@ -17,10 +15,10 @@ func SseHandler(h *hub) http.HandlerFunc {
 			return
 		}
 
-		client := NewClient()
+		client := NewClient(r.URL.Query().Get("name"))
 		h.register <- &client
 
-		t := time.NewTicker(time.Duration(1) * time.Second)
+		t := time.NewTicker(time.Duration(5) * time.Second)
 		defer t.Stop()
 
 		for {
@@ -30,11 +28,9 @@ func SseHandler(h *hub) http.HandlerFunc {
 				return
 
 			case <-t.C:
-				dataStr :=  fmt.Sprintf(`data: {"user-id":"%s"}`, uuid.New().String())
-				event := "event: userjoined\n" + dataStr  + "\n\n"
 				_, err := fmt.Fprintf(
 					w,
-					event,
+					"data: keepalive\n\n",
 				)
 				if err != nil {
 					http.Error(w, "msg failed", http.StatusInternalServerError)
@@ -45,7 +41,6 @@ func SseHandler(h *hub) http.HandlerFunc {
 			case msg := <-client.Channel:
 				_, err := fmt.Fprintf(
 					w,
-					"event:channel-msg\ndata:%s\n\n",
 					msg,
 				)
 				if err != nil {

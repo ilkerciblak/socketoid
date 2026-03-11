@@ -18,6 +18,7 @@ export default function SSEStatusIndicator() {
           },
         },
       ],
+      auto: true,
     },
   );
 
