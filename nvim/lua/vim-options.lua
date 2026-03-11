@@ -6,4 +6,5 @@ vim.cmd("set number")
 vim.cmd("set relativenumber")
 vim.cmd("set smartindent")
 vim.cmd("syntax on")
+--vim.cmd("set nowrap")
 
