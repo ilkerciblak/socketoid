@@ -281,6 +281,146 @@ When server get a `PING`, it send back a `PONG` with the exact same `PAYLOAD DAT
 
 ## Implementation Notes
 
+
+### Initiating WebSocket Connection
+As mentioned, websocket connection starts with a couple of HTTP requests that constructing `handshake process`. 
+
+First *client party* initiates the handshake process with a HTTP requests similar to following:
+```HTTP
+GET /ws-endpoint HTTP/1.1
+Host: example.com:PORT
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: some-key
+Sec-WebSocket-Version: 13
+```
+On server party, handler should examine this request and upgrade the connection to `websocket`. While this process, server party should _compute_ the `Sec-WebSocket-Accept` header value through `Sec-WebSocket-Key` header value which _client_ sent. If server supports `websocket` connection, server should respond with `101 Switching Protocol`:
+```HTTP
+HTTP/1.1 101 Switching Protocol
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: <computed-accept-header>
+```
+
+#### How to Generate Accept Key on Server Side ,`Sec-WebSocket-Accept` 
+
+Accept Key generation process involves, 
+
+- Retrieving hashed `Sec-WebSocket-Key` value from the  `request headers`
+- Concatenating raw `Sec-WebSocket-Key` with the `magic-string` **258EAFA5-E914-47DA-95CA-C5AB0DC85B11** as `Sec-WebSocket-Key+magic-string` 
+- Hashing the resulting string with `SHA-1` chipher.
+- Base64 encoding the hashed string. Resultant base64Encoded string is the `Sec-WebSocket-Accept` value.
+
+This `header` ensures and checks whether the issuer client requested `websocket` connection.
+
+
+#### Using TCP Connection
+
+After the handshake procedure is done with `101 Switching Protocol` respond, the `http.ResponseWriter` cannot be used no more. In order to exchange data in real time using `websockets`, application is required to use raw TCP connection via `net.Conn`.
+
+Thus in websocket connection handler, `http.Hijacker` interferface is used to construct TCP connection.
+
+```go
+hijacker, k := w.(http.Hijacker)
+conn, buffread, err := hijacker.Hijack()
+```
+
+`Hijack()` gains the control of the HTTP server and returns `net.Conn` interface instance. We can read `data-frames` over this `conn` from now on.
+
+#### Instrumenting WebSocket Upgrade Handler 
+
+
+Similar to _SSE_ part of this project, a `Hub` instance will orchestrate `Client`s and their connections.  
+
+Following code demonstrate the **accept key generation** and **response construction** private functions.   
+
+```go
+package ws
+
+import (
+	"crypto/sha1"
+	"encoding/base64"
+	"fmt"
+	"net/http"
+	"strings"
+)
+
+type websocket struct {
+	host string
+	port string
+	h    *hub
+}
+
+const magicString string = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+func generateAcceptKey(clientKey string) string {
+	// Concatenate with magic string
+	clientKey = clientKey + magicString
+	// Hash the result using SHA-1
+	hasher := sha1.New()
+	hasher.Write([]byte(clientKey))
+	// Encoding and creating Sec-WebSocket-Accept Header
+	hashed := base64.StdEncoding.EncodeToString(hasher.Sum(nil))
+	return hashed
+}
+
+func handshakeResponse(acceptHeader string) []byte {
+	lines := []string{
+		fmt.Sprintf("HTTP/1.1 %d %s", http.StatusSwitchingProtocols,http.StatusText(http.StatusSwitchingProtocols)),
+		fmt.Sprintf("Sec-WebSocket-Accept: %s", acceptHeader),
+		"Upgrade: websocket",
+		"Connection: Upgrade",
+		"",
+	}
+
+	return []byte(strings.Join(lines, "\r\n"))
+}
+```
+
+After _hijacking_ the connection in order to use _raw TCP connection_, `http.ResponseWriter` is able to be used. Instead application should `read/write` bytes of data over connection buffer. Also [RFC Documentation](https://www.rfc-editor.org/rfc/rfc6455) states every line of the respond should include`\r\n` and an extra `\r\n` after the respond headers. 
+
+```go
+func (ws *websocket) Upgrade(w http.ResponseWriter, r *http.Request) {
+
+	hijacker, k := w.(http.Hijacker)
+	if !k {
+		http.Error(w, "websocket connection is not supported", http.StatusInternalServerError)
+		return
+	}
+
+	conn, buffRW, err := hijacker.Hijack()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	client := NewClient(conn)
+
+	// Read Sec-WebSocket-Key from request headers
+	key := r.Header.Get("Sec-WebSocket-Key")
+
+	// Generate Sec-WebSocket-Accept header value
+	acceptHeader := generateAcceptKey(key)
+	data := handshakeResponse(acceptHeader)
+	buffRW.Write(data)
+
+	buffRW.Flush()
+
+	ws.h.register <- client
+
+}
+```
+`Upgrade` handler, first `Hijack()` the HTTP connection to retrieve `net.Conn` interface instance and a `bufio.ReadWriter` instance. Returns a `500 Internal Server Error` whether the `http.Hijacker` interface is not supported.
+
+
+After that, in order to manage client connection on `Client` instance, it creates a new client and completes the `handshake` process with generating `accept-key` and using `bufio.ReadWriter.Flush()`. Finally sending the new created client instance to `hub`'s register channel.
+
+
+### Reading and Decoding Data Frames
+
+
+
+
+
 ## Implementation Decisions
 
 ## Related ADRs
