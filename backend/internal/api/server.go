@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"ilkerciblak/socketoid/internal/api/sse"
+	"ilkerciblak/socketoid/internal/api/ws"
 	"net/http"
 	"time"
 )
@@ -16,8 +17,13 @@ type server struct {
 func Server(address string, idle_to int) (*server, error) {
 	mux := http.NewServeMux()
 	sse_hub := sse.Hub()
+	wsHub := ws.Hub()
+
 	go func() {
 		sse_hub.Run(context.Background())
+	}()
+	go func() {
+		wsHub.Run(context.Background())
 	}()
 	mux.HandleFunc("/", greet)
 	mux.HandleFunc("/health", healthCheck)

@@ -29,7 +29,7 @@ func (ws *websocket) Upgrade(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	client := NewClient(conn)
+	client := NewClient(conn, buffRW)
 
 	// Read Sec-WebSocket-Key from request headers
 	key := r.Header.Get("Sec-WebSocket-Key")
@@ -58,7 +58,7 @@ func generateAcceptKey(clientKey string) string {
 
 func handshakeResponse(acceptHeader string) []byte {
 	lines := []string{
-		fmt.Sprintf("HTTP/1.1 %d %s", http.StatusSwitchingProtocols,http.StatusText(http.StatusSwitchingProtocols)),
+		fmt.Sprintf("HTTP/1.1 %d %s", http.StatusSwitchingProtocols, http.StatusText(http.StatusSwitchingProtocols)),
 		fmt.Sprintf("Sec-WebSocket-Accept: %s", acceptHeader),
 		"Upgrade: websocket",
 		"Connection: Upgrade",

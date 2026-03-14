@@ -4,19 +4,19 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
-	"net"
 )
 
 type dataFrameBytes struct {
-	fin           byte
-	rsv1          byte
-	rsv2          byte
-	rsv3          byte
-	opcode        byte
-	isMasked      byte
-	payloadLength uint64
-	maskingKey    []byte
-	payload       []byte
+	fin                byte
+	rsv1               byte
+	rsv2               byte
+	rsv3               byte
+	opcode             byte
+	isMasked           byte
+	payloadLengthBytes byte
+	payloadLength      uint64
+	maskingKey         []byte
+	payload            []byte
 }
 
 const (
@@ -28,8 +28,8 @@ const (
 	opcodeContinuation byte = 0x0
 )
 
-func ReadFrame(buffRW bufio.ReadWriter) (opcode byte, payload []byte, err error) {
-	dataFrame, err := readDataFrameBytes(&buffRW)
+func ReadFrame(buffRW *bufio.ReadWriter) (opcode byte, payload []byte, err error) {
+	dataFrame, err := readDataFrameBytes(buffRW)
 	if err != nil {
 		return 0, nil, fmt.Errorf("failed to read dataframe: %v", err)
 	}
@@ -44,9 +44,38 @@ func ReadFrame(buffRW bufio.ReadWriter) (opcode byte, payload []byte, err error)
 	return dataFrame.opcode, decodedPayload, nil
 }
 
-func WriteFrame(conn net.Conn, buff bufio.ReadWriter, opcode byte, payload []byte) error {
-	return nil
+func WriteFrame(buff *bufio.ReadWriter, payload []byte) error {
+	// writing first byte : fin + opcode
+	buff.WriteByte(0x80 | opcodeUTF8Text) // 1000|opcode
+	// writing isMasked and payloadLengthBytes
+	buff.WriteByte(byte(len(payload)))
+	// no mask - so subsequent bytes are payload
+	buff.Write(payload)
 
+	if err := buff.Flush(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func WritePongFrame(buff *bufio.ReadWriter) error {
+	buff.WriteByte(0x80 | opcodePong)
+
+	if err := buff.Flush(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func WriteCloseFrame(buff *bufio.ReadWriter) error {
+	buff.WriteByte(0x80 | opcodeClose)
+	if err := buff.Flush(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func readDataFrameBytes(buff *bufio.ReadWriter) (*dataFrameBytes, error) {
