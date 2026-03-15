@@ -684,6 +684,82 @@ Using `buff.Flush()` instead `net/conn` is sufficient to read/write messages.
 
 ### Managing Clients and Connections
 
+#### Managing Clients
+
+ Despite either party can _`close`_ the connection, application should be able to manage the data transaction process and connection status for each specific `requesting party` on the server side. A `Client` refers a single instance of connection to application's _websocket endpoint_. Through `Client`s, _websocket server_ will be able to manage internet traffic and data transactions for each specific connection. 
+
+In order to represent each unique connection while managing the data transaction process for each connection, our `Client` modeled as follows:
+
+```go
+type client struct {
+	ID         string
+	Connection net.Conn
+	BuffRW     *bufio.ReadWriter
+	Channel    chan []byte
+	closeOnce  sync.Once
+}
+```
+- **ID `string`**: Unique identifier for clients
+- **Connection `net.Conn`**: holds a reference to the underlying TCP connection
+- **BuffRW `bufio.ReadWriter`**: provides buffered I/O  
+- **Channel `chan []byte`**: provides message traffic buffer
+- **closeOnce `sync.Once`**: Guarantees single execution of clean-up logic
+
+As mentioned, `Client` definition is encapsulating the _data transaction process_ for each specific _client's connection_. Following _client_ methods, `readPump` and `writePump` manages the process in concurrent threads:
+
+```go
+func (c *client) readPump(h *hub) {
+
+	for {
+		opcode, _, err := ReadFrame(c.BuffRW)
+		if err != nil {
+			c.cleanUp(h)
+
+			return
+		}
+
+		if opcode == opcodeClose {
+			WriteCloseFrame(c.BuffRW)
+			c.cleanUp(h)
+			return
+		}
+
+		if opcode == opcodePing {
+			if err := WritePongFrame(c.BuffRW); err != nil {
+				c.cleanUp(h)
+				return
+			}
+		}
+	}
+}
+```
+While using the helper functions from `frame.go`, `readPump` encapsulates the incoming message processing mechanism within the `Client` struct. Since data transaction is a continuous process until either party _close_ the connection, method includes a _continuous `for` loop_. To summarize the mechanism, method consists of conditional statements and corresponding `write` operations.
+
+
+```go
+func (c *client) writePump(h *hub) {
+	for msg := range c.Channel {
+		WriteFrame(c.BuffRW, msg)
+	}
+	c.cleanUp(h)
+
+}
+```
+
+On the other hand, `writePump` method listens the client's channel for new messages and forwards each message to the client using `WriteFrame` helper function. Finally, `cleanup` function runs whether the channel is closed.
+
+```go
+func (c *client) cleanUp(h *hub) {
+	c.closeOnce.Do(func() {
+		c.Connection.Close()
+		close(c.Channel)
+		h.disconnect <- c
+	})
+}
+```
+Lastly, `cleanup` makes sure the client connection is closed gracefully and message channel is closed. Also signals the `Hub` to disconnect the client by ssending it to the disconnect channel. This is ensures ending the connection operation is performed safely rather than mutatiing shared state and preventing `deadlocks`.
+
+
 #### Managing Connections via `Hub`
 
 Since each time a client connects to the `websocket` endpoint, a new isolated connection will be running for this client. Consequently, forwarding state changes through multiple connections will become a complex task if there is no centralized mechanism for managing connections and message channels.
@@ -705,7 +781,9 @@ type hub struct {
 ```
 On the other hand, method signatures and logics nearly stayed same.
 
-#### Managing Clients
+
+
+
 
 
 
