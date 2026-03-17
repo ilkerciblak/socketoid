@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"ilkerciblak/socketoid/internal/api/sse"
+	"ilkerciblak/socketoid/internal/api/ws"
 	"net/http"
 	"time"
 )
@@ -13,20 +14,27 @@ type server struct {
 	server *http.Server
 }
 
-func Server(address string, idle_to int) (*server, error) {
+func Server(address string, idleTo int) (*server, error) {
 	mux := http.NewServeMux()
-	sse_hub := sse.Hub()
+	sseHub := sse.Hub()
+	wsHub := ws.Hub()
+	websocket := ws.WebSocket(address, wsHub)
+
 	go func() {
-		sse_hub.Run(context.Background())
+		sseHub.Run(context.Background())
+	}()
+	go func() {
+		wsHub.Run(context.Background())
 	}()
 	mux.HandleFunc("/", greet)
 	mux.HandleFunc("/health", healthCheck)
-	mux.HandleFunc("/events", sse.SseHandler(sse_hub))
+	mux.HandleFunc("/events", sse.SseHandler(sseHub))
+	mux.HandleFunc("/ws", websocket.Upgrade)
 
 	return &server{
 		server: &http.Server{
 			Addr:        address,
-			IdleTimeout: time.Second * time.Duration(idle_to),
+			IdleTimeout: time.Second * time.Duration(idleTo),
 			Handler:     mux,
 		},
 	}, nil
