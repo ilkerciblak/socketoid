@@ -1,4 +1,4 @@
-# Issue#10 - Presence System Instrumentation [See on GitHub repository](https://github.com/ilkerciblak/socketoid/issues/10)
+# Issue#12 - Implementing WebSocket Server [See on GitHub repository](https://github.com/ilkerciblak/socketoid/issues/12)
 
 ## Overview
 
@@ -627,7 +627,7 @@ func ReadFrame(buffRW bufio.ReadWriter) (opcode byte, payload []byte, err error)
 
 Writing payload to buffer follows the similar methodology. `buff.WriteByte(b byte)` allows to write bitwise messages in buffer in order. Since components occuring in bits, bitwise operations are used to construct components in bytes. For an example first byte carrying `fin+rsv(3 bits)+opcode(4 bits)` is constructed using bitwise `|` operator.
 
-As [RFC Spec]() declarations, messages from server to clients **MUST NOT** be masked. So written message carries 0 bytes of mask-key and `0` for masked bit. Lastly using `buff.Write(b []byte)` all subsequent buffer memory was filled with the payload. For now this operation only supports `payload-length` of 125.
+As [RFC Spec](https://www.rfc-editor.org/rfc/rfc6455) declarations, messages from server to clients **MUST NOT** be masked. So written message carries 0 bytes of mask-key and `0` for masked bit. Lastly using `buff.Write(b []byte)` all subsequent buffer memory was filled with the payload. For now this operation only supports `payload-length` of 125.
 
 ```go
 func WriteFrame(buff bufio.ReadWriter,  payload []byte) error {
@@ -686,7 +686,7 @@ Using `buff.Flush()` instead `net/conn` is sufficient to read/write messages.
 
 #### Managing Clients
 
- Despite either party can _`close`_ the connection, application should be able to manage the data transaction process and connection status for each specific `requesting party` on the server side. A `Client` refers a single instance of connection to application's _websocket endpoint_. Through `Client`s, _websocket server_ will be able to manage internet traffic and data transactions for each specific connection. 
+Despite either party can _`close`_ the connection, application should be able to manage the data transaction process and connection status for each specific `requesting party` on the server side. A `Client` refers a single instance of connection to application's _websocket endpoint_. Through `Client`s, _websocket server_ will be able to manage internet traffic and data transactions for each specific connection.
 
 In order to represent each unique connection while managing the data transaction process for each connection, our `Client` modeled as follows:
 
@@ -699,9 +699,10 @@ type client struct {
 	closeOnce  sync.Once
 }
 ```
+
 - **ID `string`**: Unique identifier for clients
 - **Connection `net.Conn`**: holds a reference to the underlying TCP connection
-- **BuffRW `bufio.ReadWriter`**: provides buffered I/O  
+- **BuffRW `bufio.ReadWriter`**: provides buffered I/O
 - **Channel `chan []byte`**: provides message traffic buffer
 - **closeOnce `sync.Once`**: Guarantees single execution of clean-up logic
 
@@ -733,8 +734,8 @@ func (c *client) readPump(h *hub) {
 	}
 }
 ```
-While using the helper functions from `frame.go`, `readPump` encapsulates the incoming message processing mechanism within the `Client` struct. Since data transaction is a continuous process until either party _close_ the connection, method includes a _continuous `for` loop_. To summarize the mechanism, method consists of conditional statements and corresponding `write` operations.
 
+While using the helper functions from `frame.go`, `readPump` encapsulates the incoming message processing mechanism within the `Client` struct. Since data transaction is a continuous process until either party _close_ the connection, method includes a _continuous `for` loop_. To summarize the mechanism, method consists of conditional statements and corresponding `write` operations.
 
 ```go
 func (c *client) writePump(h *hub) {
@@ -757,8 +758,8 @@ func (c *client) cleanUp(h *hub) {
 	})
 }
 ```
-Lastly, `cleanup` makes sure the client connection is closed gracefully and message channel is closed. Also signals the `Hub` to disconnect the client by ssending it to the disconnect channel. This is ensures ending the connection operation is performed safely rather than mutatiing shared state and preventing `deadlocks`.
 
+Lastly, `cleanup` makes sure the client connection is closed gracefully and message channel is closed. Also signals the `Hub` to disconnect the client by ssending it to the disconnect channel. This is ensures ending the connection operation is performed safely rather than mutatiing shared state and preventing `deadlocks`.
 
 #### Managing Connections via `Hub`
 
@@ -768,7 +769,7 @@ Similar to SSE Hub system that we implemented on [issue #5](https://github.com/i
 
 `Hub` orchestrator architecture will be similar to the previous one on the SSE part, with some little differences.
 
-- `broadcast` parameter type changed into `chan []byte`, while in sse it was `chan string`. Server sent event servers only supports the MIME type `text/event-stream` while **websockets** carrying data in `bytes`. Thus this conversion was required. 
+- `broadcast` parameter type changed into `chan []byte`, while in sse it was `chan string`. Server sent event servers only supports the MIME type `text/event-stream` while **websockets** carrying data in `bytes`. Thus this conversion was required.
 
 ```go
 type hub struct {
@@ -779,17 +780,175 @@ type hub struct {
 	connections map[string]*client
 }
 ```
-On the other hand, method signatures and logics nearly stayed same.
+
+On the other hand, method signatures and logics nearly stayed same. Having to said that, `disconnectClient` business logic is changed due to seperate `client connection logic` and `hub orchestrator` logic. In `hub.disconnectClient` method, orhecstrator only deletes the given client connection from the _connection map_ it holding. Although, `client` instances can manage their connection and message channels without any dependency required.
+
+```go
+func (h *hub) disconnectClient(c *client) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if _, exists := h.connections[c.ID]; !exists {
+		return fmt.Errorf("client connection does not exists")
+	}
+
+	delete(h.connections, c.ID)
+	return nil
+}
+```
+
+### Implementing Event Handling and Typed Events
+
+The WebSocket implementation uses a typed event protocol to structure all messages exchanged between client and server. Every message must conform to the following structure:
+
+```go
+type event struct {
+    Type    string          `json:"type"`
+    Payload json.RawMessage `json:"payload"`
+}
+```
+
+`Type` identifies the event category — such as `board.card.created` or `user.joined`. `Payload` is stored as `json.RawMessage`, meaning it is kept as raw JSON bytes without being deserialized into a concrete type. This allows the Hub or handler to inspect the event type first, then deserialize the payload into the appropriate struct based on that type.
+
+**Marshalling** converts an `event` struct into a byte slice for transmission over the WebSocket connection:
+
+```go
+func (e event) Marshal() ([]byte, error) {
+    return json.Marshal(&e)
+}
+```
+
+**Unmarshalling** parses an incoming byte slice — read from a WebSocket text frame — back into an `event` struct:
+
+```go
+func UnmarshallEvent(payload []byte) (*event, error) {
+    var message event
+    if err := json.Unmarshal(payload, &message); err != nil {
+        return nil, fmt.Errorf("failed event unmarshalling: %v", err)
+    }
+    return &message, nil
+}
+```
+
+All messages are transmitted as UTF-8 text frames (`opcode 0x1`). Binary frames are not used. On the frontend, messages must be sent via `JSON.stringify` to ensure correct encoding.
 
 
+### Registering Read/Write Channels to _websocket_ Handler 
+
+As previously mentioned, `Upgrade` handler method is the entry point for all websocket connections. It enables the real-time data transmission by means of processing `handshake` procedure and transforming initial HTTP request into persistent Websocket connection.
+
+Standard HTTP in Go manages the connection lifecyle using `request-response model` which not sufficient to construct a persistence connection between client and server. Thus `Upgrade` handler `Hijacks` the connection. `Hijacker` interface transfers the ownership of the TCP connection away from the HTTP server.
+
+From this point all subsequent reads and writes are became the responsibilty of the _websocket_ implementation.
+
+To more detailed information visit [Initiating WebSocket Connection](#initiating-websocket-connection) again.
 
 
+**Starting the Connection Lifecycle** 
+
+After the handshake is completed, a `client` is constructed from the _hijacked_ net/connection `conn` and `buffio.ReadWriter` instances, and registered with the Hub.
+
+```go
+go client.readPump(ws.h)
+go client.writePump(ws.h)
+```
+
+Upgrade returns immediately after launching these goroutines. The connection lifecycle — reading frames, writing frames, and cleanup — is entirely delegated to readPump and writePump.
 
 
-
-
+---
 
 ## Implementation Decisions
+
+### Testing with a go client instead of `websocket`
+
+Initially a _websocket testing tool_ `websocat` was considered for verifying the implementation. However, running `websocat` inside the development container somehow failed to transmit messages over the connection despite successfully establishing the handshake and initiating the connection.
+
+In order to work around this, a minimal `Go test client` was constructed. The client manually performs the _websocket handshake_ over a raw TCP connection, constructs masked data frames for `text, ping and close data frames` with relevant opcodes. Finally reads the server response in order to test whether the prefered data transaction is committed. Server's responds are writtin into console in order to serve full visibility.
+
+```go
+package main
+
+import (
+	"crypto/sha1"
+	"encoding/base64"
+	"fmt"
+	"net"
+)
+
+func makeFrame(opcode byte, payload []byte) []byte {
+	maskKey := []byte{0x37, 0xfa, 0x21, 0x3d}
+	frame := []byte{0x80 | opcode, byte(0x80 | len(payload))}
+	frame = append(frame, maskKey...)
+	for i, b := range payload {
+		frame = append(frame, b^maskKey[i%4])
+	}
+	return frame
+}
+
+func handshake(conn net.Conn) {
+	key := "dGhlIHNhbXBsZSBub25jZQ=="
+	h := sha1.New()
+	h.Write([]byte(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+	accept := base64.StdEncoding.EncodeToString(h.Sum(nil))
+	fmt.Println("expect accept:", accept)
+
+	req := "GET /ws HTTP/1.1\r\nHost: development:8080\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n"
+	conn.Write([]byte(req))
+
+	buf := make([]byte, 1024)
+	n, _ := conn.Read(buf)
+	fmt.Println("handshake response:", string(buf[:n]))
+}
+
+func readResponse(conn net.Conn, label string) {
+	buf := make([]byte, 1024)
+	n, _ := conn.Read(buf)
+	fmt.Printf("[%s] got back: %v\n", label, buf[:n])
+}
+
+func main() {
+	conn, _ := net.Dial("tcp", "development:8080")
+	handshake(conn)
+
+	// Test 1: text frame
+	fmt.Println("\n--- Test 1: Text Frame ---")
+	msg := []byte(`{"type":"board.card.created","payload":{}}`)
+	conn.Write(makeFrame(0x1, msg))
+	readResponse(conn, "text")
+
+	// Test 2: ping frame
+	fmt.Println("\n--- Test 2: Ping ---")
+	conn.Write(makeFrame(0x9, []byte{}))
+	readResponse(conn, "ping")
+
+	// Test 3: close frame
+	fmt.Println("\n--- Test 3: Close ---")
+	conn.Write(makeFrame(0x8, []byte{}))
+	readResponse(conn, "close")
+}
+```
+
+Following code-block represents the output of previous test block and confirms all the three frames were handled correctly by the server:
+
+```bash
+expect accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+handshake response: HTTP/1.1 101 Switching Protocols
+Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+Upgrade: websocket
+Connection: Upgrade
+
+--- Test 1: Text Frame ---
+[text] got back: [129 42 123 34 116 121 112 101 34 ...]
+
+--- Test 2: Ping ---
+[ping] got back: [138]   // 0x8A = pong frame
+
+--- Test 3: Close ---
+[close] got back: [136]  // 0x88 = close frame
+```
+
+
+
 
 ## Related ADRs
 
@@ -798,3 +957,4 @@ On the other hand, method signatures and logics nearly stayed same.
 - https://www.rfc-editor.org/rfc/rfc6455
 - https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers
 - https://www.rapidtables.com/convert/number/hex-to-binary.html?x=1
+- https://github.com/vi/websocat
