@@ -146,8 +146,8 @@ In order to conduct clear educational steps to `learn by building` on _Real Time
     - [x] 2.2 -> SSE Client Instrumentation (Next.js): See [implementation notes](./docs/implementation_notes/issue-0008-sse-client-integration-nextjs-fe.md) 
     - [x] 2.3 -> Presence System Implementation: See [implementation notes](./docs/implementation_notes/issue-0010-presence-system-instrumentation.md)
 
-- [ ] Phase 3 - WebSocket Implementation 
-    - [ ] 3.1 -> WebSocket upgrade and connection manager on server side
+- [x] Phase 3 - WebSocket Implementation 
+    - [x] 3.1 -> WebSocket upgrade and connection manager on server side: See [implementation notes](./docs/implementation_notes/issue-0012-web-socket-server.md))
     - [ ] 3.2 -> WebSocket client hook on frontend
     - [ ] 3.3 -> Board event protocol (message types, serializing/ deserializing messages)
 
