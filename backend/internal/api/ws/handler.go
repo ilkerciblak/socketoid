@@ -9,9 +9,16 @@ import (
 )
 
 type websocket struct {
-	host string
-	port string
-	h    *hub
+	address string
+	h       *hub
+}
+
+func WebSocket(address string, h *hub) *websocket {
+
+	return &websocket{
+		address: address,
+		h:       h,
+	}
 }
 
 const magicString string = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -43,6 +50,9 @@ func (ws *websocket) Upgrade(w http.ResponseWriter, r *http.Request) {
 
 	ws.h.register <- client
 
+	go client.readPump(ws.h)
+
+	go client.writePump(ws.h)
 }
 
 func generateAcceptKey(clientKey string) string {

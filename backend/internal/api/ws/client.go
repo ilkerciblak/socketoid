@@ -4,6 +4,7 @@ package ws
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"sync"
 
@@ -32,8 +33,9 @@ func NewClient(conn net.Conn, buffRW *bufio.ReadWriter) *client {
 func (c *client) readPump(h *hub) {
 
 	for {
-		opcode, _, err := ReadFrame(c.BuffRW)
+		opcode, payload, err := ReadFrame(c.BuffRW)
 		if err != nil {
+			fmt.Printf("\n\nerr: %v", err)
 			c.cleanUp(h)
 
 			return
@@ -51,6 +53,17 @@ func (c *client) readPump(h *hub) {
 				return
 			}
 		}
+
+		if opcode == opcodeUTF8Text {
+			event, err := UnmarshallEvent(payload)
+			if err != nil {
+				fmt.Printf("opcodeUTF8Text data unmarshalling failed: %v", err)
+				c.cleanUp(h)
+			}
+			data, _ := event.Marshal()
+			WriteFrame(c.BuffRW, data)
+		}
+
 	}
 
 }

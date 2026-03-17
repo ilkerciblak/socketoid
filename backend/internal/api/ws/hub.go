@@ -43,8 +43,6 @@ func (h *hub) disconnectClient(c *client) error {
 		return fmt.Errorf("client connection does not exists")
 	}
 
-	clientChannel := h.connections[c.ID].Channel
-	close(clientChannel)
 	delete(h.connections, c.ID)
 	return nil
 
@@ -71,6 +69,7 @@ func (h *hub) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			fmt.Println("ws context done")
 			return
 		case newClient := <-h.register:
 			if err := h.registerClient(newClient); err != nil {

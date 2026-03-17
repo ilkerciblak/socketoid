@@ -61,7 +61,6 @@ func WriteFrame(buff *bufio.ReadWriter, payload []byte) error {
 
 func WritePongFrame(buff *bufio.ReadWriter) error {
 	buff.WriteByte(0x80 | opcodePong)
-
 	if err := buff.Flush(); err != nil {
 		return err
 	}
