@@ -28,6 +28,7 @@ export default function useWebSocket(g: {
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const webSocketRef = useRef<WebSocket | null>(null);
+  const listeners = useRef<onMessage[]>(g.messageListeners);
 
   const connect = useCallback(() => {
     if (webSocketRef) webSocketRef.current = null;
@@ -43,9 +44,8 @@ export default function useWebSocket(g: {
 
       webSocketRef.current.onmessage = (event) => {
         try {
-          g.messageListeners.forEach((listener) => listener.handler(event));
+          listeners.current.forEach((listener) => listener.handler(event));
         } catch (e) {
-          console.log(e);
           setErrorMsg(`${e}`);
         }
       };
@@ -56,16 +56,16 @@ export default function useWebSocket(g: {
       };
 
       webSocketRef.current.onerror = (event) => {
-        console.log(event);
+        setConnectionState(WsConnectionStatus.ERROR);
         if (g.onError) g.onError(event);
       };
     } catch (error) {
       console.log(`${error}`);
     }
-  }, [g.url, g.messageListeners]);
+  }, [g.url]);
 
   const sendMessage = useCallback(
-    (data: { type: string; payload: any }) => {
+    (data: { type: string; payload: unknown }) => {
       try {
         if (
           webSocketRef.current &&
