@@ -147,8 +147,8 @@ In order to conduct clear educational steps to `learn by building` on _Real Time
     - [x] 2.3 -> Presence System Implementation: See [implementation notes](./docs/implementation_notes/issue-0010-presence-system-instrumentation.md)
 
 - [x] Phase 3 - WebSocket Implementation 
-    - [x] 3.1 -> WebSocket upgrade and connection manager on server side: See [implementation notes](./docs/implementation_notes/issue-0012-web-socket-server.md))
-    - [ ] 3.2 -> WebSocket client hook on frontend
+    - [x] 3.1 -> WebSocket upgrade and connection manager on server side: See [implementation notes](./docs/implementation_notes/issue-0012-web-socket-server.md)
+    - [x] 3.2 -> WebSocket client hook on frontend: See [implementation notes](./docs/implementation_notes/issue-0014-web-socket-client.md)
     - [ ] 3.3 -> Board event protocol (message types, serializing/ deserializing messages)
 
 - [ ] Phase 4 - Feature Implementation
