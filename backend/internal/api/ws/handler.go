@@ -72,7 +72,8 @@ func handshakeResponse(acceptHeader string) []byte {
 		fmt.Sprintf("Sec-WebSocket-Accept: %s", acceptHeader),
 		"Upgrade: websocket",
 		"Connection: Upgrade",
-		"",
+		"Access-Control-Allow-Origin: *",
+		"\r\n",
 	}
 
 	return []byte(strings.Join(lines, "\r\n"))
