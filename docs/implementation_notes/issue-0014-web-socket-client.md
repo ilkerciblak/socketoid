@@ -291,8 +291,6 @@ const closeConnection = useCallback(() => {
 }, [webSocketRef]);
 ```
 
-Browser'dan ping göndermene gerek yok zaten — bu server'ın görevi. Server keepalive ping atacak, browser otomatik pong dönecek.
-
 **Control Frames** 
 
 Modern browsers preventing creating and sending `ping-pong` frames while automatically providing a `keep-alive` functionality themselves.  
