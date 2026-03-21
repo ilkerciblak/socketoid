@@ -60,6 +60,16 @@ func (c *client) readPump(h *hub) {
 				fmt.Printf("opcodeUTF8Text data unmarshalling failed: %v", err)
 				c.cleanUp(h)
 			}
+
+			if err := h.router.Route(
+				c,
+				*event,
+			); err != nil {
+				errEvent := UnkownEventRespond(event.Type)
+				data, _ := errEvent.Marshal()
+				WriteFrame(c.BuffRW, data)
+			}
+
 			data, _ := event.Marshal()
 			WriteFrame(c.BuffRW, data)
 		}
