@@ -12,15 +12,17 @@ type hub struct {
 	disconnect  chan *client
 	broadcast   chan []byte
 	connections map[string]*client
+	router      *router
 }
 
-func Hub() *hub {
+func Hub(router *router) *hub {
 	return &hub{
 		mu:          sync.RWMutex{},
 		connections: make(map[string]*client, 512),
 		register:    make(chan *client, 512),
 		disconnect:  make(chan *client, 512),
 		broadcast:   make(chan []byte, 512),
+		router:      router,
 	}
 }
 

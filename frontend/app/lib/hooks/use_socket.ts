@@ -68,15 +68,16 @@ export default function useWebSocket(g: {
     (data: { type: string; payload: unknown }) => {
       try {
         if (
-          webSocketRef.current &&
-          webSocketRef.current.readyState != webSocketRef.current.OPEN
+          webSocketRef.current == null ||
+          (webSocketRef.current &&
+            webSocketRef.current.readyState != webSocketRef.current.OPEN)
         ) {
           throw new Error(
-            `connection is not open: ${webSocketRef.current.readyState}`,
+            `connection is not open: ${webSocketRef.current?.readyState}`,
           );
         }
         const serialized = JSON.stringify(data);
-        webSocketRef.current?.send(serialized);
+        webSocketRef.current!.send(serialized);
       } catch (error) {
         setErrorMsg("serialization error");
         console.log(`serialization error ${error}`);

@@ -17,7 +17,10 @@ type server struct {
 func Server(address string, idleTo int) (*server, error) {
 	mux := http.NewServeMux()
 	sseHub := sse.Hub()
-	wsHub := ws.Hub()
+
+	wsRouter := ws.Router()
+
+	wsHub := ws.Hub(wsRouter)
 	websocket := ws.WebSocket(address, wsHub)
 
 	go func() {
