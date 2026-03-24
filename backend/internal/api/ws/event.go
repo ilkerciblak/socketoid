@@ -28,37 +28,32 @@ func UnmarshallEvent(payload []byte) (*event, error) {
 	return &message, nil
 }
 
-const (
-	EventCardCreated = "board.card.created"
-	EventCardMoved   = "board.card.moved"
-	EventCardDeleted = "board.card.deleted"
-	EventCardUpdated = "board.card.updated"
-)
-
-type CardCreatedPayload struct {
-	CardID string `json:"card_id"`
-	Title  string `json:"title"`
-	Column string `json:"column"`
-}
-
-type CardMovedPayload struct {
-	CardID string `json:"card_id"`
-	Column string `json:"column"`
-}
-
-type CardDeletedPayload struct {
-	CardID string `json:"card_id"`
-}
-
-type CardUpdatePayload struct {
-	CardID string `json:"card_id"`
-	Title  string `json:"title"`
-	Column string `json:"column"`
-}
-
 type errorRespond struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code     int    `json:"code"`
+	Message  string `json:"message"`
+	RefEvent string `json:"ref,omitempty"`
+}
+
+func ErrorEvent(eventType, msg string) *event {
+	payload := errorRespond{
+		Code:     4001,
+		Message:  fmt.Sprintf("%v", msg),
+		RefEvent: fmt.Sprintf("%v", eventType),
+	}
+
+	rawMessage, err := json.Marshal(&payload)
+	if err != nil {
+		return &event{
+			Type:    "error",
+			Payload: json.RawMessage{},
+		}
+
+	}
+
+	return &event{
+		Type:    "error",
+		Payload: rawMessage,
+	}
 }
 
 func UnkownEventRespond(eventType string) *event {
