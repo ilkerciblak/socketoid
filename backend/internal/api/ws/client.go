@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type client struct {
+type Client struct {
 	ID         string
 	Connection net.Conn
 	BuffRW     *bufio.ReadWriter
@@ -19,9 +19,9 @@ type client struct {
 	closeOnce  sync.Once
 }
 
-func NewClient(conn net.Conn, buffRW *bufio.ReadWriter) *client {
+func NewClient(conn net.Conn, buffRW *bufio.ReadWriter) *Client {
 
-	return &client{
+	return &Client{
 		ID:         uuid.NewString(),
 		Connection: conn,
 		BuffRW:     buffRW,
@@ -30,12 +30,13 @@ func NewClient(conn net.Conn, buffRW *bufio.ReadWriter) *client {
 }
 
 // Client.readPump concurrently reads data frame and processes the incoming data
-func (c *client) readPump(h *hub) {
+func (c *Client) readPump(h *Hub, router *Router) {
 
 	for {
 		opcode, payload, err := ReadFrame(c.BuffRW)
 		if err != nil {
 			fmt.Printf("\n\nerr: %v", err)
+			WriteCloseFrame(c.BuffRW)
 			c.cleanUp(h)
 
 			return
@@ -59,31 +60,31 @@ func (c *client) readPump(h *hub) {
 			if err != nil {
 				WriteCloseFrame(c.BuffRW)
 				c.cleanUp(h)
-				return 
+				return
 			}
-			if err := h.router.Route(
+			if err := router.Route(
 				c,
 				*event,
 			); err != nil {
-				errEvent := UnkownEventRespond(event.Type)
+				errEvent := ErrorEvent(event.Type, err.Error())
+
 				data, e := errEvent.Marshal()
 				if e != nil {
 					WriteCloseFrame(c.BuffRW)
 					return
 				}
+				// c.Channel <- data
 				WriteFrame(c.BuffRW, data)
-				continue
+
 			}
 
-			data, _ := event.Marshal()
-			WriteFrame(c.BuffRW, data)
 		}
 
 	}
 
 }
 
-func (c *client) writePump(h *hub) {
+func (c *Client) writePump(h *Hub) {
 	for msg := range c.Channel {
 		WriteFrame(c.BuffRW, msg)
 	}
@@ -91,7 +92,7 @@ func (c *client) writePump(h *hub) {
 
 }
 
-func (c *client) cleanUp(h *hub) {
+func (c *Client) cleanUp(h *Hub) {
 	c.closeOnce.Do(func() {
 		c.Connection.Close()
 		close(c.Channel)

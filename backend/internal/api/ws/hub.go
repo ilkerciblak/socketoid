@@ -6,31 +6,29 @@ import (
 	"sync"
 )
 
-type hub struct {
+type Hub struct {
 	mu          sync.RWMutex
-	register    chan *client
-	disconnect  chan *client
-	broadcast   chan []byte
-	connections map[string]*client
-	router      *router
+	register    chan *Client
+	disconnect  chan *Client
+	Broadcast   chan []byte
+	connections map[string]*Client
 }
 
-func Hub(router *router) *hub {
-	return &hub{
+func NewHub() *Hub {
+	return &Hub{
 		mu:          sync.RWMutex{},
-		connections: make(map[string]*client, 512),
-		register:    make(chan *client, 512),
-		disconnect:  make(chan *client, 512),
-		broadcast:   make(chan []byte, 512),
-		router:      router,
+		connections: make(map[string]*Client, 512),
+		register:    make(chan *Client, 512),
+		disconnect:  make(chan *Client, 512),
+		Broadcast:   make(chan []byte, 512),
 	}
 }
 
-func (h *hub) registerClient(c *client) error {
+func (h *Hub) registerClient(c *Client) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if _, exists := h.connections[c.ID]; exists {
-		return fmt.Errorf("client connection already exists")
+		return fmt.Errorf("Client connection already exists")
 	}
 
 	h.connections[c.ID] = c
@@ -38,18 +36,18 @@ func (h *hub) registerClient(c *client) error {
 	return nil
 }
 
-func (h *hub) disconnectClient(c *client) error {
+func (h *Hub) disconnectClient(c *Client) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if _, exists := h.connections[c.ID]; !exists {
-		return fmt.Errorf("client connection does not exists")
+		return fmt.Errorf("Client connection does not exists")
 	}
 
 	delete(h.connections, c.ID)
 	return nil
 
 }
-func (h *hub) broadcastPayload(payload []byte) error {
+func (h *Hub) broadcastPayload(payload []byte) error {
 	h.mu.Lock()
 	channels := make([]chan []byte, 0, len(h.connections))
 	for id := range h.connections {
@@ -65,7 +63,7 @@ func (h *hub) broadcastPayload(payload []byte) error {
 
 }
 
-func (h *hub) Run(ctx context.Context) {
+func (h *Hub) Run(ctx context.Context) {
 	fmt.Println("ws server running")
 
 	for {
@@ -78,11 +76,11 @@ func (h *hub) Run(ctx context.Context) {
 				fmt.Println(err)
 			}
 
-		case client := <-h.disconnect:
-			if err := h.disconnectClient(client); err != nil {
+		case Client := <-h.disconnect:
+			if err := h.disconnectClient(Client); err != nil {
 				fmt.Println(err)
 			}
-		case msg := <-h.broadcast:
+		case msg := <-h.Broadcast:
 			if err := h.broadcastPayload(msg); err != nil {
 				fmt.Println(err)
 			}

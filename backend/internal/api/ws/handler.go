@@ -10,14 +10,16 @@ import (
 
 type websocket struct {
 	address string
-	h       *hub
+	h       *Hub
+	router  *Router
 }
 
-func WebSocket(address string, h *hub) *websocket {
+func WebSocket(address string, h *Hub, r *Router) *websocket {
 
 	return &websocket{
 		address: address,
 		h:       h,
+		router:  r,
 	}
 }
 
@@ -50,7 +52,7 @@ func (ws *websocket) Upgrade(w http.ResponseWriter, r *http.Request) {
 
 	ws.h.register <- client
 
-	go client.readPump(ws.h)
+	go client.readPump(ws.h, ws.router)
 
 	go client.writePump(ws.h)
 }
