@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"ilkerciblak/socketoid/internal/api/sse"
 	"ilkerciblak/socketoid/internal/api/ws"
+	"ilkerciblak/socketoid/internal/services/board"
 	"net/http"
 	"time"
 )
@@ -17,11 +18,14 @@ type server struct {
 func Server(address string, idleTo int) (*server, error) {
 	mux := http.NewServeMux()
 	sseHub := sse.Hub()
+	wsRouter := ws.NewRouter()
 
-	wsRouter := ws.Router()
-
-	wsHub := ws.Hub(wsRouter)
-	websocket := ws.WebSocket(address, wsHub)
+	wsHub := ws.NewHub()
+	registerWsHandlers(
+		wsRouter,
+		wsHub,
+		board.RegisterBoardHandlers)
+	websocket := ws.WebSocket(address, wsHub, wsRouter)
 
 	go func() {
 		sseHub.Run(context.Background())
@@ -83,4 +87,14 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(data)
+}
+
+func registerWsHandlers(
+	router *ws.Router,
+	hub *ws.Hub,
+	handlerRegisterFuncs ...func(router *ws.Router, hub *ws.Hub),
+) {
+	for _, f := range handlerRegisterFuncs {
+		f(router, hub)
+	}
 }
