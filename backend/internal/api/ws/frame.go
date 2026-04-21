@@ -47,9 +47,22 @@ func ReadFrame(buffRW *bufio.ReadWriter) (opcode byte, payload []byte, err error
 func WriteFrame(buff *bufio.ReadWriter, payload []byte) error {
 	// writing first byte : fin + opcode
 	buff.WriteByte(0x80 | opcodeUTF8Text) // 1000|opcode
-	// writing isMasked and payloadLengthBytes
-	buff.WriteByte(byte(len(payload)))
 	// no mask - so subsequent bytes are payload
+	if payloadLen := len(payload); payloadLen <= 125 {
+		// writing isMasked and payloadLengthBytes
+		buff.WriteByte(byte(len(payload)))
+	} else if payloadLen <= 65535 {
+		buff.WriteByte(0x7E)
+		b := make([]byte, 2)
+		binary.BigEndian.PutUint16(b, uint16(len(payload)))
+		buff.Write(b)
+	} else if payloadLen > 65535 {
+		buff.WriteByte(0x7F)
+		b := make([]byte, 8)
+		binary.BigEndian.PutUint64(b, uint64(len(payload)))
+		buff.Write(b)
+	}
+
 	buff.Write(payload)
 
 	if err := buff.Flush(); err != nil {
