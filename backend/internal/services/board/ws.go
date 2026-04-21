@@ -13,6 +13,7 @@ const (
 	EventCardMoved   = "board.card.moved"
 	EventCardDeleted = "board.card.deleted"
 	EventCardUpdated = "board.card.updated"
+	EventReadBoard   = "board.state"
 )
 
 type CardCreatedPayload struct {
@@ -34,6 +35,41 @@ type CardUpdatePayload struct {
 	CardID string `json:"card_id"`
 	Title  string `json:"title"`
 	Column string `json:"column"`
+}
+
+func BoardStateEvent(b Board) (*ws.Event, error) {
+
+
+	stateBytes, err := json.Marshal(b.CardList)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ws.Event{
+		Type:    "board.state",
+		Payload: json.RawMessage(stateBytes),
+	}, nil
+}
+
+func readBoardHandler(b *Board, h *ws.Hub) ws.HandlerFunc {
+	return func(client *ws.Client, payload json.RawMessage) error {
+		boardStateEvent, err := BoardStateEvent(*b)
+		if err != nil {
+			fmt.Printf("failed to generate board.state: %v", err)
+			return err
+		}
+
+		eventBytes, err := boardStateEvent.Marshal()
+		if err != nil {
+			fmt.Printf("failed to generate eventBytes: %v", err)
+			return err
+		}
+
+		h.Broadcast <- eventBytes
+
+		return nil
+
+	}
 }
 
 func createCardHandler(b *Board, h *ws.Hub) ws.HandlerFunc {
@@ -147,8 +183,8 @@ func randomID() string {
 
 func RegisterBoardHandlers(router *ws.Router, hub *ws.Hub) {
 	b := InitiateBoard()
-
-	router.Register(EventCardCreated, createCardHandler(b, hub))
+  
+	router.Register(EventReadBoard, readBoardHandler(b, hub))
 	router.Register(EventCardMoved, moveCardHandler(b, hub))
 	router.Register(EventCardDeleted, deleteCardHandler(b, hub))
 	router.Register(EventCardUpdated, updateCardHandler(b, hub))

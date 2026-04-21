@@ -77,6 +77,7 @@ export default function useWebSocket(g: {
           );
         }
         const serialized = JSON.stringify(data);
+        console.log(serialized)
         webSocketRef.current!.send(serialized);
       } catch (error) {
         setErrorMsg("serialization error");

@@ -4,9 +4,11 @@ export interface BoardEvent {
 }
 
 export type CardCreatedPayload = {
-  Title: string;
+  title: string;
   column: string;
 };
+
+
 
 export class EventCardCreated implements BoardEvent {
   type: string;
@@ -59,6 +61,17 @@ export class EventCardMoved implements BoardEvent {
     this.type = "board.card.moved";
     this.payload = payload;
   }
+}
+
+export class ReadBoardState implements BoardEvent{
+    type: string;
+    payload:  CardUpdatedPayload[];
+
+    constructor(payload: CardUpdatedPayload[]){
+      this.type="board.state";
+      this.payload = payload;
+    }
+
 }
 
 export const errorEventHandler = (event: MessageEvent): void | Error => {

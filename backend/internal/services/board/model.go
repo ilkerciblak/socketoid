@@ -13,13 +13,15 @@ type Board struct {
 }
 
 func InitiateBoard() *Board {
+	card1 := *NewCard(string(Done), "initiate board")
+
 	return &Board{
 		mu:       &sync.RWMutex{},
-		CardList: map[string]Card{},
+		CardList: map[string]Card{
+			card1.CardID: card1,
+		},
 	}
 }
-
-
 
 type Card struct {
 	CardID string     `json:"card_id"`

@@ -8,13 +8,28 @@ import {
   CardCreatedPayload,
   CardUpdatedPayload,
   EventCardUpdated,
+  ReadBoardState,
 } from "../lib/ws/events";
 
 export default function WsConnectionStatusIndicator() {
   const { connectionState, errorMsg, sendMessage, closeConnection } =
     useWebSocket({
       url: app_config.PUBLIC_API + "/ws",
-      messageListeners: [{ type: "error", handler: errorEventHandler }],
+      messageListeners: [
+        { type: "error", handler: errorEventHandler },
+        {
+          type: "board.card.create ",
+          handler(event) {
+            console.log(event);
+          },
+        },
+        {
+          type: "board.state",
+          handler(event) {
+            console.log(event);
+          },
+        },
+      ],
     });
 
   let bg_color = "bg-black";
@@ -69,20 +84,43 @@ export default function WsConnectionStatusIndicator() {
         <button
           className="p-2 py-1 bg-blue-800 rounded-md text-gray-600 text-center cursor-pointer hover:bg-blue-600 hover:text-white active:bg-blue-700"
           onClick={() => {
-            const payload: CardUpdatedPayload = {
-              title: "arbitrary",
+            const payload: CardCreatedPayload = {
               column: "1",
+              title: "ornektitle",
+            };
+            const event = new EventCardCreated(payload);
+            sendMessage(event);
+          }}
+        >
+          Create Test
+        </button>
+        <button
+          className="p-2 py-1 bg-blue-800 rounded-md text-gray-600 text-center cursor-pointer hover:bg-blue-600 hover:text-white active:bg-blue-700"
+          onClick={() => {
+            const payload: CardUpdatedPayload = {
               card_id: "1",
+              column: "1",
+              title: "ornektitle",
             };
             const event = new EventCardUpdated(payload);
             sendMessage(event);
-            //sendMessage({
-            // type: "hello.broadcast",
-            //payload: { message: "HELLO WORLDz!" },
-            //});
           }}
         >
-          Arbitrary Test
+          Update Test
+        </button>
+      </div>
+      <div className="rounded-md bg-gray-700 text-center max-w-3xl py-5 my-3 flex justify-center self-center place-self-center">
+        <h1 className="text-center text-white font-bold italic underline uppercase">
+          Cards
+        </h1>
+        <button
+          className="p-2 py-1 bg-blue-800 rounded-md text-gray-600 text-center cursor-pointer hover:bg-blue-600 hover:text-white active:bg-blue-700"
+          onClick={() => {
+            
+            sendMessage(new ReadBoardState([]));
+          }}
+        >
+          Get Cards
         </button>
       </div>
     </Suspense>

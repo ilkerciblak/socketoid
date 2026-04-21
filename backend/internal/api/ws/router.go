@@ -28,7 +28,7 @@ func (r *Router) Register(eventType string, handler HandlerFunc) error {
 
 }
 
-func (r *Router) Route(client *Client, event event) error {
+func (r *Router) Route(client *Client, event Event) error {
 	handler, exists := r.routes[event.Type]
 	if !exists {
 		// client<-unknown event
