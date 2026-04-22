@@ -37,10 +37,15 @@ type CardUpdatePayload struct {
 	Column string `json:"column"`
 }
 
+
+
 func BoardStateEvent(b Board) (*ws.Event, error) {
-
-
-	stateBytes, err := json.Marshal(b.CardList)
+	cardList := make([]Card, 0)
+	for _, card := range b.CardList{
+		cardList = append(cardList, card)
+	}
+  
+	stateBytes, err := json.Marshal(cardList)
 	if err != nil {
 		return nil, err
 	}

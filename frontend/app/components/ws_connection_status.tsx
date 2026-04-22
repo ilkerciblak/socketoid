@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { Suspense } from "react";
 import { app_config } from "../lib/app_config";
 import useWebSocket, { WsConnectionStatus } from "../lib/hooks/use_socket";
@@ -12,6 +13,7 @@ import {
 } from "../lib/ws/events";
 
 export default function WsConnectionStatusIndicator() {
+  const [cardList, setCardList] = useState<CardUpdatedPayload[]>([]);
   const { connectionState, errorMsg, sendMessage, closeConnection } =
     useWebSocket({
       url: app_config.PUBLIC_API + "/ws",
@@ -20,17 +22,31 @@ export default function WsConnectionStatusIndicator() {
         {
           type: "board.card.create ",
           handler(event) {
+            console.log("ben create");
             console.log(event);
           },
         },
         {
           type: "board.state",
           handler(event) {
-            console.log(event);
+            try {
+              const data = JSON.parse(event.data) as ReadBoardState;
+              if (data.type == "board.state") {
+                setCardList(data.payload);
+              }
+            } catch (e) {
+              console.log(e);
+            }
           },
         },
       ],
     });
+
+  useEffect(() => {
+    connectionState && sendMessage(new ReadBoardState([]));
+
+    return;
+  }, [connectionState]);
 
   let bg_color = "bg-black";
   let shadow_color = "shadow-gray-500";
@@ -109,19 +125,18 @@ export default function WsConnectionStatusIndicator() {
           Update Test
         </button>
       </div>
-      <div className="rounded-md bg-gray-700 text-center max-w-3xl py-5 my-3 flex justify-center self-center place-self-center">
+      <div className="rounded-md bg-gray-700 text-center  w-2xl max-w-3xl py-5 my-3 flex flex-col justify-center self-center place-self-center">
         <h1 className="text-center text-white font-bold italic underline uppercase">
           Cards
         </h1>
-        <button
-          className="p-2 py-1 bg-blue-800 rounded-md text-gray-600 text-center cursor-pointer hover:bg-blue-600 hover:text-white active:bg-blue-700"
-          onClick={() => {
-            
-            sendMessage(new ReadBoardState([]));
-          }}
-        >
-          Get Cards
-        </button>
+
+        <ul className="flex flex-col justify-center bg-stone-600">
+          {cardList.map((card: CardUpdatedPayload) => (
+            <li key={card.title} className="px-2 py-1 bg-stone-400 my-1">
+              {card.title}
+            </li>
+          ))}
+        </ul>
       </div>
     </Suspense>
   );

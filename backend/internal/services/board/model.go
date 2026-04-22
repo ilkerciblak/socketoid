@@ -13,7 +13,7 @@ type Board struct {
 }
 
 func InitiateBoard() *Board {
-	card1 := *NewCard(string(Done), "initiate board")
+	card1 := *NewCard(string(Done), "initiate board card")
 
 	return &Board{
 		mu:       &sync.RWMutex{},
